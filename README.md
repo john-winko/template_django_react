@@ -17,9 +17,13 @@ npm install watch axios react-router-dom
 ~~~
 python -m venv .venv
 ~~~
-### This is for windows... use the correct activate on mac/linux
+#### (Windows) Go into virtual environment
 ~~~
 .venv/scripts/activate.ps1
+~~~
+#### (Mac/Linux) Go into virtual environment
+~~~
+source venv/bin/activate
 ~~~
 ~~~
 pip install django djangorestframework psycopg2 psycopg2-binary
