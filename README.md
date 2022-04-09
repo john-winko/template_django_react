@@ -1,7 +1,16 @@
 # Setting up basic authentication
 
-This is using the sql lite db, update your settings.py to connect to postgres if you wish
+This is using the sql lite db, update your settings.py to connect to postgres if you wish. If you are getting an error:
+~~~
+?: (staticfiles.W004) The directory 'F:\Work\sandbox\test1\build/static' in the STATICFILES_DIRS setting does not exist.
+~~~
+or something similiar, replace the / with a \\ for the path to build static in proj/settings.py
+~~~ python
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "build\\static"), # your static/ files folder
+]
 
+~~~
 ## Make migrations
 should not be needed, but if your migrations show changes there may be an issue
 ~~~

@@ -115,7 +115,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "build/static"), # your static/ files folder
+    os.path.join(BASE_DIR, "build\\static"), # your static/ files folder
 ]
 
 # Static files (CSS, JavaScript, Images)
