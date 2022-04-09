@@ -1,121 +1,190 @@
-# Full Stack from scratch steps
+# Setting up basic authentication
 
-## Notes
-- Replace "app" with your app / api / backend name
-- Replace "proj" with the django project name you want to use
+This is using the sql lite db, update your settings.py to connect to postgres if you wish
 
-## Create React Frontend
-Starting from a blank folder
+## Make migrations
+should not be needed, but if your migrations show changes there may be an issue
 ~~~
-npx create-react-app .
+python manage.py makemigrations
 ~~~
+Run the migrations (this WILL be needed)
 ~~~
-npm install watch axios react-router-dom
-~~~
-
-## Create Django Backend
-~~~
-python -m venv .venv
-~~~
-#### (Windows) Go into virtual environment
-~~~
-.venv/scripts/activate.ps1
-~~~
-#### (Mac/Linux) Go into virtual environment
-~~~
-source venv/bin/activate
-~~~
-~~~
-pip install django djangorestframework psycopg2 psycopg2-binary
-~~~
-~~~
-django-admin startproject proj .
-~~~
-~~~
-python manage.py startapp app
+python manage.py migrate
 ~~~
 
-## Make sure everything runs as is
-### Verify django
+## Create users
+Either create a super user (and follow prompts)
 ~~~
-python manage.py runserver
+python manage.py createsuperuser
 ~~~
-### Verify react
-~~~ 
-npm run start (verified react runs)
-~~~
+Then navigate to http://localhost:8000/admin/ and add your users
 
-## Update proj/settings.py
+-Or- add a fixtures file (link) to app/fixtures/ (will have to create folder) then run
+~~~
+python manage.py loaddata data.json
+~~~
+*** Note: if you are making your own migrations your OS may use the wrong UTF encoding and will fail to load data. Fix will be to open the fixture file in notepad and resave using UTF-8 (NOT UTF-8 with BOM)
+
+## Add views to app/views.py
+
+imports
 ~~~ python
-import os
-
-...
-
-INSTALLED_APPS = [
-    ...
-    'app', 
-    'rest_framework'
-]
-
-...
-
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "build/static"), # your static/ files folder
-]
+from django.http import HttpResponse, JsonResponse
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.decorators import api_view
 ~~~
 
-## Update the app/views.py
+login (does not handle disabled accounts or trying a login attempt after being authenticated)
 ~~~ python
-from django.http import HttpResponse
-
-# Create your views here.
-def send_the_homepage(request):
-    theIndex = open('build/index.html').read()
-    return HttpResponse(theIndex)
+@api_view(['POST'])
+def log_in(request):
+    username = request.data['username']
+    password = request.data['password']
+    user = authenticate(username=username, password=password)
+    if user is not None:    
+        try:
+            # access the base request, not DRF request (starts a login session for user)   
+            login(request._request, user)
+        except Exception as e:
+            print(str(e))
+        # Don't send everything from user, only what app needs to use for state
+        return JsonResponse({"username":user.username})             
+    else:
+        return HttpResponse('no user!')
 ~~~
 
-## Update proj/urls.py
+Who Am I? (testing if user is authentiated via request)
 ~~~ python
-from django.contrib import admin
-from django.urls import path, include
-
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include("app.urls"))
-]
+@api_view(["GET"])
+def who_am_i(request):
+    if request.user.is_authenticated:
+        return JsonResponse({"user":request.user.username})
+    return JsonResponse({"user":None})
 ~~~
+
+Logging out
+~~~ python
+@api_view(['POST'])
+def log_out(request):
+    logout(request)
+    return HttpResponse('Logged you out!')
+~~~
+
 
 ## Update app/urls.py
 ~~~ python
-from django.urls import path 
-from . import views
-
-
 urlpatterns = [
     path('', views.send_the_homepage),
+    path('login/', views.log_in),
+    path('whoami/', views.who_am_i),
+    path('logout/', views.log_out)
 ]
 ~~~
 
-## update package.json (Windows)
-~~~ json
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "watch": "watch \"npm run build && copy manage.py+\" ./src"
-  },
+## Fix manifest.json error in public/index.html
+delete/comment out for now
+~~~ html
+<link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 ~~~
 
-## update package.json (Mac/Linux)
-~~~ json
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "watch": "watch \"npm run build && copy manage.py+\" ./src"
-  },
+## Add some styling for forms in src/App.css
+keep everything center aligned and keep form dimensions inside of a bounded area
+~~~ css
+.App {
+  text-align: center;
+  display: flex;
+  justify-content: center;  
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;  
+  width: 160px;
+}
 ~~~
 
-## Update .gitignore as necessary
+## Add src/utils/utils.js for doing api requests
+(will have to create folder/file)
+
+~~~ jsx
+import axios from "axios"
+const myexports = {}
+
+const getCSRFToken = ()=>{
+  let csrfToken
+
+  // the browser's cookies for this page are all in one string, separated by semi-colons
+  const cookies = document.cookie.split(';')
+  for ( let cookie of cookies ) {
+      // individual cookies have their key and value separated by an equal sign
+      const crumbs = cookie.split('=')
+      if ( crumbs[0].trim() === 'csrftoken') {
+          csrfToken = crumbs[1]
+      }
+  }
+  return csrfToken
+}
+axios.defaults.headers.common['X-CSRFToken'] = getCSRFToken()
+
+myexports.logIn = (username, password, setUser) => {
+  let params = {
+    "username" : username,
+    "password" : password
+  }
+  axios.post('/login/', params).then((response)=>{ 
+    if (response.data.username){
+      setUser(response.data.username)
+    }
+  })
+}
+
+myexports.logOut = async () => {
+  await axios.post("/logout/")
+}
+
+myexports.whoAmI = async () => {
+  const response = await axios.get("/whoami/")
+  console.log("whoami", response.data)
+}
+
+export default myexports;
+~~~
+
+# Update react frontend src/App.js
+~~~ jsx
+import { useEffect, useState } from 'react';
+import './App.css';
+import utils from './utils/utils.js'
+
+function App() {
+
+  const [user, setUser] = useState(null)
+
+  useEffect(()=> {
+    utils.whoAmI()
+  },[user])
+
+  const handleFormSubmit = (evt) => {
+    evt.preventDefault()
+    let username = evt.target.elements.username.value
+    let password = evt.target.elements.password.value
+    utils.logIn(username, password, setUser)
+  }
+
+  return (
+    <div className="App">
+      <form onSubmit={handleFormSubmit}>
+        {user && <p>Current logged in user: {user}</p>}
+        <label forName="">Username</label>
+        <input name='username' type={"text"}/>
+        <label forName="">Password</label>
+        <input name='password' type={"text"}/>
+        <button type='submit' name='submit' value={"login"}>Login</button>
+      </form>
+    </div>
+  );
+}
+
+export default App;
+~~~
