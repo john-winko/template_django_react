@@ -1,4 +1,4 @@
-# Setting up basic authentication
+# Square 1 - Setting up basic authentication
 
 This is using the sql lite db, update your settings.py to connect to postgres if you wish. If you are getting an error:
 ~~~
@@ -28,7 +28,7 @@ python manage.py createsuperuser
 ~~~
 Then navigate to http://localhost:8000/admin/ and add your users
 
--Or- add a fixtures file (link) to app/fixtures/ (will have to create folder) then run
+-Or- add a [fixtures file](https://github.com/john-winko/template_django_react/blob/Basic_Authentication/app/fixtures/data.json) to app/fixtures/ (will have to create folder) then run
 ~~~
 python manage.py loaddata data.json
 ~~~
